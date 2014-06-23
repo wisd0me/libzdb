@@ -66,7 +66,7 @@ static pthread_once_t once_control = PTHREAD_ONCE_INIT;
 /* -------------------------------------------------------- Privat methods */
 
 
-static void init_once(void) { ThreadData_create(Exception_stack); }
+static void init_once(void) { ThreadData_create(&Exception_stack); }
 
 
 /* ----------------------------------------------------- Protected methods */

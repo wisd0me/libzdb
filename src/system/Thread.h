@@ -62,8 +62,19 @@
 #define LOCK(mutex) do { Mutex_T *_yymutex=&(mutex); \
         wrapper(pthread_mutex_lock(_yymutex));
 #define END_LOCK wrapper(pthread_mutex_unlock(_yymutex)); } while (0)
+
+#ifdef DISABLED_CODE
 #define ThreadData_create(key) wrapper(pthread_key_create(&(key), NULL))
 #define ThreadData_set(key, value) pthread_setspecific((key), (value))
 #define ThreadData_get(key) pthread_getspecific((key))
+#else
+void ThreadData_create(ThreadData_T *key);
+void ThreadData_set(ThreadData_T key, void *value);
+void *ThreadData_get(ThreadData_T key);
+
+void ThreadData_define_create_func(void (*func)(ThreadData_T *));
+void ThreadData_define_set_func(void (*func)(ThreadData_T, void *));
+void ThreadData_define_get_func(void *(*func)(ThreadData_T));
+#endif
 
 #endif

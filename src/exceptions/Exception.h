@@ -191,7 +191,6 @@
  * @file
  */
 
-
 #define T Exception_T
 /** @cond hide */
 #include <pthread.h>
@@ -202,9 +201,20 @@
 #define CLANG_ANALYZER_NORETURN
 #endif
 #endif
+
+#ifdef NOT_SURE_WHATS_BETTER
+//#include "Thread.h"
+
 #define ThreadData_T pthread_key_t
 #define ThreadData_set(key, value) pthread_setspecific((key), (value))
 #define ThreadData_get(key) pthread_getspecific((key))
+#else
+#define ThreadData_T pthread_key_t
+void ThreadData_create(ThreadData_T *key);
+void ThreadData_set(ThreadData_T key, void *value);
+void *ThreadData_get(ThreadData_T key);
+#endif
+
 typedef struct T {
         const char *name;
 } T;

@@ -25,6 +25,7 @@
 
 #include "Config.h"
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <mysql.h>
@@ -314,13 +315,22 @@ const char *MysqlConnection_getLastError(T C) {
         return StringBuffer_toString(C->sb); // Either the statement itself or a statement error
 }
 
-
-/* Class method: MySQL client library finalization */
-void MysqlConnection_onstop(void) {
+static void _mysql_library_deinit(void) {
         if (mysql_get_client_version() >= 50003)
                 mysql_library_end();
         else
                 mysql_server_end();
+}
+
+static pthread_once_t mysql_finish_once = PTHREAD_ONCE_INIT;
+
+void mysql_register_deinit(void) {
+	atexit(_mysql_library_deinit);
+}
+
+/* Class method: MySQL client library finalization */
+void MysqlConnection_onstop(void) {
+	pthread_once(&mysql_finish_once, mysql_register_deinit);
 }
 
 #ifdef PACKAGE_PROTECTED

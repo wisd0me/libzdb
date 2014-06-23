@@ -15,7 +15,7 @@ RE2CFLAGS       = -b
 FILTERH         = ./tools/bin/filterh
 
 AM_CPPFLAGS     = $(CPPFLAGS) $(DBCPPFLAGS)
-AM_CPPFLAGS     += -Isrc -Isrc/util -Isrc/net -Isrc/db -Isrc/exceptions
+AM_CPPFLAGS     += -Isrc -Isrc/util -Isrc/net -Isrc/db -Isrc/exceptions -Isrc/system
 
 pkgconfigdir 	= $(libdir)/pkgconfig
 pkgconfig_DATA 	= $(LIBRARY_NAME).pc
@@ -24,8 +24,9 @@ lib_LTLIBRARIES = libzdb.la
 libzdb_la_SOURCES = src/util/Str.c src/util/Vector.c src/util/StringBuffer.c \
                     src/system/Mem.c src/system/System.c src/system/Time.c \
                     src/db/ConnectionPool.c src/db/Connection.c src/db/ResultSet.c \
-                    src/db/PreparedStatement.c  \
-                    src/exceptions/assert.c src/exceptions/Exception.c
+                    src/db/PreparedStatement.c \
+                    src/exceptions/assert.c src/exceptions/Exception.c \
+                    src/system/Thread.c
 
 if ! WITH_ZILD
 libzdb_la_SOURCES += src/net/URL.c 
@@ -53,7 +54,8 @@ endif
 
 API_INTERFACES  = src/zdb.h src/db/ConnectionPool.h src/db/Connection.h \
                   src/db/ResultSet.h src/net/URL.h src/db/PreparedStatement.h \
-                  src/exceptions/SQLException.h src/exceptions/Exception.h
+                  src/exceptions/SQLException.h src/exceptions/Exception.h \
+                  src/system/Thread.h
 
 nobase_nodist_include_HEADERS = $(patsubst %, $(LIBRARY_NAME)/%, $(notdir $(API_INTERFACES)))
 

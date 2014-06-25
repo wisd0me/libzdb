@@ -185,6 +185,7 @@ static int initaleDefiningBuffers(T R) {
                         return false;
                 }
         }
+		(void) status;
         return true;
 }
 

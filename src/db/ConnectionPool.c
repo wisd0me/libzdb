@@ -79,9 +79,13 @@ void(*AbortHandler)(const char *error) = NULL;
 
 
 static void drainPool(T P) {
+		/* Mark all connections as N/A first? */
         while (! Vector_isEmpty(P->pool)) {
 		Connection_T con = Vector_pop(P->pool);
+		Connection_setAvailable(con, false);
+		Mutex_unlock(P->mutex);
 		Connection_free(&con);
+		Mutex_lock(P->mutex);
 	}
 }
 
@@ -321,30 +325,51 @@ void ConnectionPool_stop(T P) {
 Connection_T ConnectionPool_getConnection(T P) {
 	Connection_T con = NULL;
 	assert(P);
-	LOCK(P->mutex) 
-        {
-                int i, size = Vector_size(P->pool);
-                for (i = 0; i < size; i++) {
-                        con = Vector_get(P->pool, i);
-                        if (Connection_isAvailable(con) && Connection_ping(con)) {
-                                Connection_setAvailable(con, false);
-                                goto done;
-                        } 
-                }
-                con = NULL;
-                if (size < P->maxConnections) {
-                        con = Connection_new(P, &P->error);
-                        if (con) {
-                                Connection_setAvailable(con, false);
-                                Vector_push(P->pool, con);
-                        } else {
-                                DEBUG("Failed to create connection -- %s\n", P->error);
-                                FREE(P->error);
-                        }
-                }
-        }
+	Mutex_lock(P->mutex);
+
+	int i, size = Vector_size(P->pool);
+	for (i = 0; i < size; i++) {
+		con = Vector_get(P->pool, i);
+		/* withdraw the connection, and don't hold the lock while doing io */
+		if (Connection_isAvailable(con)) {
+			Connection_setAvailable(con, false);
+			Mutex_unlock(P->mutex);
+
+			if (Connection_ping(con))
+				goto done; /* mutex previously unlocked, just return the con */
+
+			Mutex_lock(P->mutex);
+			Connection_setAvailable(con, true);
+		}
+	}
+
+	con = NULL;
+	if (size < P->maxConnections) {
+		/* unlock until the connection will be established */
+		Mutex_unlock(P->mutex);
+		con = Connection_new(P, &P->error);
+		if (!con) {
+			DEBUG("Failed to create connection -- %s\n", P->error);
+			FREE(P->error);
+			return NULL;
+		}
+
+		Mutex_lock(P->mutex);
+		size = Vector_size(P->pool); /* renew the size */
+		if (con) {
+			Connection_setAvailable(con, false);
+			if (size < P->maxConnections) {
+				Vector_push(P->pool, con);
+			} else {
+				Connection_free(&con);
+				con = NULL;
+			}
+		} else {
+		}
+	}
+
+	Mutex_unlock(P->mutex);
 done: 
-        END_LOCK;
 	return con;
 }
 

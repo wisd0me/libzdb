@@ -50,19 +50,19 @@
 
 #define T ConnectionPool_T
 struct ConnectionPool_S {
-        URL_T url;
-        int filled;
-        int doSweep;
-        char *error;
-        Sem_T alarm;
-	Mutex_T mutex;
-	Vector_T pool;
-        Thread_T reaper;
-        int sweepInterval;
-	int maxConnections;
-        volatile int stopped;
-        int connectionTimeout;
-	int initialConnections;
+    URL_T url;
+    int filled;
+    int doSweep;
+    char *error;
+    Sem_T alarm;
+    Mutex_T mutex;
+    Vector_T pool;
+    Thread_T reaper;
+    int sweepInterval;
+    int maxConnections;
+    volatile int stopped;
+    int connectionTimeout;
+    int initialConnections;
 };
 
 int ZBDEBUG = false;
@@ -79,31 +79,31 @@ void(*AbortHandler)(const char *error) = NULL;
 
 
 static void drainPool(T P) {
-		/* Mark all connections as N/A first? */
-        while (! Vector_isEmpty(P->pool)) {
-		Connection_T con = Vector_pop(P->pool);
-		Connection_setAvailable(con, false);
-		Mutex_unlock(P->mutex);
-		Connection_free(&con);
-		Mutex_lock(P->mutex);
-	}
+    /* Mark all connections as N/A first? */
+    while (! Vector_isEmpty(P->pool)) {
+        Connection_T con = Vector_pop(P->pool);
+        Connection_setAvailable(con, false);
+        Mutex_unlock(P->mutex);
+        Connection_free(&con);
+        Mutex_lock(P->mutex);
+    }
 }
 
 
 static int fillPool(T P) {
-	for (int i = 0; i < P->initialConnections; i++) {
-                Connection_T con = Connection_new(P, &P->error);
-		if (! con) {
-                        if (i > 0) {
-                                DEBUG("Failed to fill the pool with initial connections -- %s\n", P->error);
-                                FREE(P->error);
-                                return true;
-                        }
-                        return false;
-                }
-		Vector_push(P->pool, con);
-	}
-	return true;
+    for (int i = 0; i < P->initialConnections; i++) {
+        Connection_T con = Connection_new(P, &P->error);
+        if (! con) {
+            if (i > 0) {
+                DEBUG("Failed to fill the pool with initial connections -- %s\n", P->error);
+                FREE(P->error);
+                return true;
+            }
+            return false;
+        }
+        Vector_push(P->pool, con);
+    }
+    return true;
 }
 
 
@@ -155,32 +155,32 @@ static void *doSweep(void *args) {
 
 
 T ConnectionPool_new(URL_T url) {
-        T P;
-	assert(url);
+    T P;
+    assert(url);
 #ifdef ZILD_PACKAGE_PROTECTED
-        Exception_init();
+    Exception_init();
 #endif
-	NEW(P);
-        P->url = url;
-	Mutex_init(P->mutex);
-	P->maxConnections = SQL_DEFAULT_MAX_CONNECTIONS;
-        P->pool = Vector_new(SQL_DEFAULT_MAX_CONNECTIONS);
-	P->initialConnections = SQL_DEFAULT_INIT_CONNECTIONS;
-        P->connectionTimeout = SQL_DEFAULT_CONNECTION_TIMEOUT;
-	return P;
+    NEW(P);
+    P->url = url;
+    Mutex_init(P->mutex);
+    P->maxConnections = SQL_DEFAULT_MAX_CONNECTIONS;
+    P->pool = Vector_new(SQL_DEFAULT_MAX_CONNECTIONS);
+    P->initialConnections = SQL_DEFAULT_INIT_CONNECTIONS;
+    P->connectionTimeout = SQL_DEFAULT_CONNECTION_TIMEOUT;
+    return P;
 }
 
 
 void ConnectionPool_free(T *P) {
-        Vector_T pool;
-	assert(P && *P);
-        pool = (*P)->pool;
-        if (! (*P)->stopped)
-                ConnectionPool_stop((*P));
-        Vector_free(&pool);
-	Mutex_destroy((*P)->mutex);
-        FREE((*P)->error);
-	FREE(*P);
+    Vector_T pool;
+    assert(P && *P);
+    pool = (*P)->pool;
+    if (! (*P)->stopped)
+        ConnectionPool_stop((*P));
+    Vector_free(&pool);
+    Mutex_destroy((*P)->mutex);
+    FREE((*P)->error);
+    FREE(*P);
 }
 
 
@@ -323,69 +323,68 @@ void ConnectionPool_stop(T P) {
 
 
 Connection_T ConnectionPool_getConnection(T P) {
-	Connection_T con = NULL;
-	assert(P);
-	Mutex_lock(P->mutex);
+    Connection_T con = NULL;
+    assert(P);
+    Mutex_lock(P->mutex);
 
-	int i, size = Vector_size(P->pool);
-	for (i = 0; i < size; i++) {
-		con = Vector_get(P->pool, i);
-		/* withdraw the connection, and don't hold the lock while doing io */
-		if (Connection_isAvailable(con)) {
-			Connection_setAvailable(con, false);
-			Mutex_unlock(P->mutex);
+    int i, size = Vector_size(P->pool);
+    for (i = 0; i < size; i++) {
+        con = Vector_get(P->pool, i);
+        /* withdraw the connection, and don't hold the lock while doing io */
+        if (Connection_isAvailable(con)) {
+            Connection_setAvailable(con, false);
+            Mutex_unlock(P->mutex);
 
-			if (Connection_ping(con))
-				goto done; /* mutex previously unlocked, just return the con */
+            if (Connection_ping(con))
+                goto done; /* mutex previously unlocked, just return the con */
 
-			Mutex_lock(P->mutex);
-			Connection_setAvailable(con, true);
-		}
-	}
+            Mutex_lock(P->mutex);
+            Connection_setAvailable(con, true);
+        }
+    }
 
-	con = NULL;
-	if (size < P->maxConnections) {
-		/* unlock until the connection will be established */
-		Mutex_unlock(P->mutex);
-		con = Connection_new(P, &P->error);
-		if (!con) {
-			DEBUG("Failed to create connection -- %s\n", P->error);
-			FREE(P->error);
-			return NULL;
-		}
+    con = NULL;
+    if (size < P->maxConnections) {
+        /* unlock until the connection will be established */
+        Mutex_unlock(P->mutex);
+        con = Connection_new(P, &P->error);
+        if (!con) {
+            DEBUG("Failed to create connection -- %s\n", P->error);
+            FREE(P->error);
+            return NULL;
+        }
 
-		Mutex_lock(P->mutex);
-		size = Vector_size(P->pool); /* renew the size */
-		if (con) {
-			Connection_setAvailable(con, false);
-			if (size < P->maxConnections) {
-				Vector_push(P->pool, con);
-			} else {
-				Connection_free(&con);
-				con = NULL;
-			}
-		} else {
-		}
-	}
+        Mutex_lock(P->mutex);
+        size = Vector_size(P->pool); /* renew the size */
+        if (con) {
+            Connection_setAvailable(con, false);
+            if (size < P->maxConnections) {
+                Vector_push(P->pool, con);
+            } else {
+                Connection_free(&con);
+                con = NULL;
+            }
+        }
+    }
 
-	Mutex_unlock(P->mutex);
-done: 
-	return con;
+    Mutex_unlock(P->mutex);
+done:
+    return con;
 }
 
 
 void ConnectionPool_returnConnection(T P, Connection_T connection) {
-	assert(P);
-        assert(connection);
-	if (Connection_isInTransaction(connection)) {
-                TRY Connection_rollback(connection); ELSE END_TRY;
-	}
-	Connection_clear(connection);
-	LOCK(P->mutex)
-        {
-		Connection_setAvailable(connection, true);
-        }
-	END_LOCK;
+    assert(P);
+    assert(connection);
+    if (Connection_isInTransaction(connection)) {
+        TRY Connection_rollback(connection); ELSE END_TRY;
+    }
+    Connection_clear(connection);
+    LOCK(P->mutex)
+    {
+        Connection_setAvailable(connection, true);
+    }
+    END_LOCK;
 }
 
 

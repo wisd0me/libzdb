@@ -40,6 +40,7 @@ PreparedStatement_T PostgresqlConnection_prepareStatement(T C, const char *sql, 
 const char *PostgresqlConnection_getLastError(T C);
 /* Event handlers */
 void  PostgresqlConnection_onstop(void);
+void  PostgresqlConnection_onreturn(void);
 #undef T
 #endif
 

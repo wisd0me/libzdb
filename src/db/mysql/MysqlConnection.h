@@ -40,6 +40,7 @@ PreparedStatement_T MysqlConnection_prepareStatement(T C, const char *sql, va_li
 const char *MysqlConnection_getLastError(T C);
 /* Event handlers */
 void MysqlConnection_onstop(void);
+void MysqlConnection_onreturn(void);
 #undef T
 #endif
 

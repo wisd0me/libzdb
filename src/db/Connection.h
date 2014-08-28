@@ -128,6 +128,14 @@ int Connection_isInTransaction(T C);
  */
 void Connection_onstop(void *pool);
 
+
+/**
+ * On return event handler called every time by
+ * ConnectionPool_returnConnection(). Currently used only in mysql
+ * to call mysql_thread_end()
+ * @param pool The parent connection pool
+ */
+void Connection_onstop(void *pool);
 //>> End Protected methods
 
 /** @name Properties */

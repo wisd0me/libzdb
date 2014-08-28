@@ -41,5 +41,6 @@ PreparedStatement_T OracleConnection_prepareStatement(T C, const char *sql, va_l
 const char *OracleConnection_getLastError(T C);
 /* Event handlers */
 void OracleConnection_onstop(void);
+void OracleConnection_onreturn(void);
 #undef T
 #endif

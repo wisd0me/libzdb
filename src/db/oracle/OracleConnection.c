@@ -55,6 +55,7 @@
 const struct Cop_T oraclesqlcops = {
         "oracle",
         OracleConnection_onstop,
+        OracleConnection_onreturn,
         OracleConnection_new,
         OracleConnection_free,
         OracleConnection_setQueryTimeout,
@@ -408,6 +409,10 @@ const char *OracleConnection_getLastError(T C) {
 /* Oracle client library finalization */
 void OracleConnection_onstop(void) {
         // Not needed, OracleConnection_free handle finalization
+}
+
+void OracleConnection_onreturn(void) {
+        // Not needed
 }
 
 #ifdef PACKAGE_PROTECTED

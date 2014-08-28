@@ -52,6 +52,7 @@
 const struct Cop_T sqlite3cops = {
         "sqlite",
         SQLiteConnection_onstop,
+        SQLiteConnection_onreturn,
         SQLiteConnection_new,
         SQLiteConnection_free,
         SQLiteConnection_setQueryTimeout,
@@ -296,6 +297,10 @@ void SQLiteConnection_onstop(void) {
 #if SQLITE_VERSION_NUMBER >= 3006000
         sqlite3_shutdown();
 #endif
+}
+
+void SQLiteConnection_onreturn(void) {
+    // Not needed
 }
 
 #ifdef PACKAGE_PROTECTED

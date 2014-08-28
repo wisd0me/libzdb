@@ -79,17 +79,17 @@ static const struct Cop_T *cops[] = {
 
 #define T Connection_T
 struct Connection_S {
-        Cop_T op;
-        URL_T url;
-	int maxRows;
-	int timeout;
-	int isAvailable;
-        Vector_T prepared;
-	int isInTransaction;
-        time_t lastAccessedTime;
-        ResultSet_T resultSet;
-        ConnectionDelegate_T D;
-        ConnectionPool_T parent;
+    Cop_T op;
+    URL_T url;
+    int maxRows;
+    int timeout;
+    int isAvailable;
+    Vector_T prepared;
+    int isInTransaction;
+    time_t lastAccessedTime;
+    ResultSet_T resultSet;
+    ConnectionDelegate_T D;
+    ConnectionPool_T parent;
 };
 
 
@@ -117,9 +117,9 @@ static int setDelegate(T C, char **error) {
 
 static void freePrepared(T C) {
         while (! Vector_isEmpty(C->prepared)) {
-		PreparedStatement_T ps = Vector_pop(C->prepared);
-		PreparedStatement_free(&ps);
-	}
+        PreparedStatement_T ps = Vector_pop(C->prepared);
+        PreparedStatement_free(&ps);
+    }
 }
 
 
@@ -136,13 +136,17 @@ void Connection_onstop(void *pool) {
 }
 
 
+void Connection_onreturn(void *pool) {
+        (getOp(URL_getProtocol(ConnectionPool_getURL(pool))))->onreturn();
+}
+
 /* ----------------------------------------------------- Protected methods */
 
 
 T Connection_new(void *pool, char **error) {
         T C;
         assert(pool);
-	NEW(C);
+        NEW(C);
         C->parent = pool;
         C->isAvailable = true;
         C->isInTransaction = false;
@@ -152,7 +156,7 @@ T Connection_new(void *pool, char **error) {
         C->lastAccessedTime = Time_now();
         if (! setDelegate(C, error))
                 Connection_free(&C);
-	return C;
+    return C;
 }
 
 
@@ -162,7 +166,7 @@ void Connection_free(T *C) {
         Vector_free(&(*C)->prepared);
         if ((*C)->D)
                 (*C)->op->free(&(*C)->D);
-	FREE(*C);
+    FREE(*C);
 }
 
 
@@ -214,14 +218,14 @@ int Connection_getQueryTimeout(T C) {
 
 void Connection_setMaxRows(T C, int max) {
         assert(C);
-	C->maxRows = max;
+    C->maxRows = max;
         C->op->setMaxRows(C->D, max);
 }
 
 
 int Connection_getMaxRows(T C) {
-	assert(C);
-	return C->maxRows;
+    assert(C);
+    return C->maxRows;
 }
 
 
@@ -307,7 +311,7 @@ void Connection_execute(T C, const char *sql, ...) {
         if (C->resultSet)
                 ResultSet_free(&C->resultSet);
         va_list ap;
-	va_start(ap, sql);
+    va_start(ap, sql);
         int success = C->op->execute(C->D, sql, ap);
         va_end(ap);
         if (! success) THROW(SQLException, "%s", Connection_getLastError(C));
@@ -320,7 +324,7 @@ ResultSet_T Connection_executeQuery(T C, const char *sql, ...) {
         if (C->resultSet)
                 ResultSet_free(&C->resultSet);
         va_list ap;
-	va_start(ap, sql);
+    va_start(ap, sql);
         C->resultSet = C->op->executeQuery(C->D, sql, ap);
         va_end(ap);
         if (! C->resultSet)
@@ -345,8 +349,8 @@ PreparedStatement_T Connection_prepareStatement(T C, const char *sql, ...) {
 
 
 const char *Connection_getLastError(T C) {
-	assert(C);
-	const char *s = C->op->getLastError(C->D);
+    assert(C);
+    const char *s = C->op->getLastError(C->D);
         return STR_DEF(s) ? s : "?";
 }
 

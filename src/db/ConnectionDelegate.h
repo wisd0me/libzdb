@@ -38,24 +38,26 @@
 typedef struct T *T;
 
 typedef struct Cop_T {
-        const char *name;
-        // Event handler class methods
-        void (*onstop)(void);
-        // Methods
-	T (*new)(URL_T url, char **error);
-	void (*free)(T *C);
-	void (*setQueryTimeout)(T C, int ms);
-        void (*setMaxRows)(T C, int max);
-        int (*ping)(T C);
-        int (*beginTransaction)(T C);
-        int (*commit)(T C);
-	int (*rollback)(T C);
-	long long (*lastRowId)(T C);
-	long long (*rowsChanged)(T C);
-	int (*execute)(T C, const char *sql, va_list ap);
-	ResultSet_T (*executeQuery)(T C, const char *sql, va_list ap);
-        PreparedStatement_T (*prepareStatement)(T C, const char *sql, va_list ap);
-        const char *(*getLastError)(T C);
+    const char *name;
+    // Event handler class methods
+    void (*onstop)(void);
+    void (*onreturn)(void);
+
+    // Methods
+    T (*new)(URL_T url, char **error);
+    void (*free)(T *C);
+    void (*setQueryTimeout)(T C, int ms);
+    void (*setMaxRows)(T C, int max);
+    int (*ping)(T C);
+    int (*beginTransaction)(T C);
+    int (*commit)(T C);
+    int (*rollback)(T C);
+    long long (*lastRowId)(T C);
+    long long (*rowsChanged)(T C);
+    int (*execute)(T C, const char *sql, va_list ap);
+    ResultSet_T (*executeQuery)(T C, const char *sql, va_list ap);
+    PreparedStatement_T (*prepareStatement)(T C, const char *sql, va_list ap);
+    const char *(*getLastError)(T C);
 } *Cop_T;
 
 #undef T

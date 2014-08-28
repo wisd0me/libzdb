@@ -52,6 +52,7 @@
 const struct Cop_T postgresqlcops = {
         "postgresql",
         PostgresqlConnection_onstop,
+        PostgresqlConnection_onreturn,
         PostgresqlConnection_new,
         PostgresqlConnection_free,
         PostgresqlConnection_setQueryTimeout,
@@ -294,6 +295,10 @@ const char *PostgresqlConnection_getLastError(T C) {
 /* Postgres client library finalization */
 void  PostgresqlConnection_onstop(void) {
         // Not needed, PostgresqlConnection_free handle finalization
+}
+
+void  PostgresqlConnection_onreturn(void) {
+        // Not needed
 }
 
 #ifdef PACKAGE_PROTECTED

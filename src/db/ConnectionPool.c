@@ -79,13 +79,14 @@ void(*AbortHandler)(const char *error) = NULL;
 
 
 static void drainPool(T P) {
-    /* Mark all connections as N/A first? */
     while (! Vector_isEmpty(P->pool)) {
         Connection_T con = Vector_pop(P->pool);
         Connection_setAvailable(con, false);
-        Mutex_unlock(P->mutex);
+        /* this function is running inside the lock, so we
+           releasing it until io inside Connection_free() is done */
+        /* Mutex_unlock(P->mutex); */
         Connection_free(&con);
-        Mutex_lock(P->mutex);
+        /* Mutex_lock(P->mutex); */
     }
 }
 
@@ -325,6 +326,8 @@ void ConnectionPool_stop(T P) {
 Connection_T ConnectionPool_getConnection(T P) {
     Connection_T con = NULL;
     assert(P);
+
+
     Mutex_lock(P->mutex);
 
     int i, size = Vector_size(P->pool);
@@ -382,6 +385,7 @@ void ConnectionPool_returnConnection(T P, Connection_T connection) {
     Connection_clear(connection);
     LOCK(P->mutex)
     {
+        Connection_onreturn(P);
         Connection_setAvailable(connection, true);
     }
     END_LOCK;

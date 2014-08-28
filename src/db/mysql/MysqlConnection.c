@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <mysql.h>
+#include <pthread.h>
 #include <errmsg.h>
 
 #include "URL.h"
@@ -57,6 +58,7 @@
 const struct Cop_T mysqlcops = {
         "mysql",
         MysqlConnection_onstop,
+        MysqlConnection_onreturn,
         MysqlConnection_new,
         MysqlConnection_free,
         MysqlConnection_setQueryTimeout,
@@ -90,6 +92,34 @@ extern const struct Pop_T mysqlpops;
 
 /* ------------------------------------------------------- Private methods */
 
+static pthread_once_t mysql_cleanup_once = PTHREAD_ONCE_INIT;
+
+/*
+  This key is used as a flag here - it tells whether mysql
+  thread cleanup function should be executed
+*/
+static pthread_key_t mysql_thread_cleanup_key;
+
+static void _mysql_thread_end(void *data) {
+    DEBUG("%s(%p) for %p\n", __FUNCTION__, (void *) pthread_self(), data);
+    mysql_thread_end();
+}
+
+static void _mysql_create_cleanup_key(void) {
+    pthread_key_create(&mysql_thread_cleanup_key, _mysql_thread_end);
+}
+
+/* registers destructor for every thread using mysql connection */
+static inline void _mysql_register_cleanup(void) {
+    pthread_once(&mysql_cleanup_once, _mysql_create_cleanup_key);
+
+    void *ptr = pthread_getspecific(mysql_thread_cleanup_key);
+
+    if (!ptr) {
+        DEBUG("%s(%p) key %p\n", __FUNCTION__, (void *) pthread_self(), ptr);
+        pthread_setspecific(mysql_thread_cleanup_key, (void *) pthread_self());
+    }
+}
 
 static MYSQL *doConnect(URL_T url, char **error) {
 #define ERROR(e) do {*error = Str_dup(e); goto error;} while (0)
@@ -101,10 +131,12 @@ static MYSQL *doConnect(URL_T url, char **error) {
         const char *user, *password, *host, *database, *charset, *timeout;
         const char *unix_socket = URL_getParameter(url, "unix-socket");
         MYSQL *db = mysql_init(NULL);
+        _mysql_register_cleanup();
         if (! db) {
                 *error = Str_dup("unable to allocate mysql handler");
                 return NULL;
-        } 
+        }
+
         if (! (user = URL_getUser(url)))
                 if (! (user = URL_getParameter(url, "user")))
                         ERROR("no username specified in URL");
@@ -112,7 +144,7 @@ static MYSQL *doConnect(URL_T url, char **error) {
                 if (! (password = URL_getParameter(url, "password")))
                         ERROR("no password specified in URL");
         if (unix_socket) {
-		host = "localhost"; // Make sure host is localhost if unix socket is to be used
+        host = "localhost"; // Make sure host is localhost if unix socket is to be used
         } else if (! (host = URL_getHost(url)))
                 ERROR("no host specified in URL");
         if ((port = URL_getPort(url)) <= 0)
@@ -316,21 +348,30 @@ const char *MysqlConnection_getLastError(T C) {
 }
 
 static void _mysql_library_deinit(void) {
+#if 0 /* disabled due to mysql stupidity and & my failed try to fix it */
         if (mysql_get_client_version() >= 50003)
                 mysql_library_end();
         else
                 mysql_server_end();
+#endif
 }
 
 static pthread_once_t mysql_finish_once = PTHREAD_ONCE_INIT;
 
 void mysql_register_deinit(void) {
-	atexit(_mysql_library_deinit);
+    atexit(_mysql_library_deinit);
 }
 
 /* Class method: MySQL client library finalization */
 void MysqlConnection_onstop(void) {
-	pthread_once(&mysql_finish_once, mysql_register_deinit);
+    pthread_once(&mysql_finish_once, mysql_register_deinit);
+}
+
+/* Class method: try to fulfil mysql client stupid rule */
+void MysqlConnection_onreturn(void) {
+	/* connection might be created not in the thread it is used */
+	_mysql_register_cleanup();
+    //mysql_thread_end(); /* it works with mysql_serer_end(); strange... */
 }
 
 #ifdef PACKAGE_PROTECTED

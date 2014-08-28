@@ -40,6 +40,7 @@ PreparedStatement_T SQLiteConnection_prepareStatement(T C, const char *sql, va_l
 const char *SQLiteConnection_getLastError(T C);
 /* Event handlers */
 void SQLiteConnection_onstop(void);
+void SQLiteConnection_onreturn(void);
 #undef T
 #endif
 

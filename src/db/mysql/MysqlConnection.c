@@ -93,6 +93,7 @@ extern const struct Pop_T mysqlpops;
 /* ------------------------------------------------------- Private methods */
 
 static pthread_once_t mysql_cleanup_once = PTHREAD_ONCE_INIT;
+static pthread_once_t mysql_init_once = PTHREAD_ONCE_INIT;
 
 /*
   This key is used as a flag here - it tells whether mysql
@@ -121,7 +122,14 @@ static inline void _mysql_register_cleanup(void) {
     }
 }
 
+static inline void _mysql_library_init(void) {
+    if (mysql_library_init(0, NULL, NULL))
+        ABORT("failed to initialize mysql library\n");
+}
+
 static MYSQL *doConnect(URL_T url, char **error) {
+        pthread_once(&mysql_init_once, _mysql_library_init);
+
 #define ERROR(e) do {*error = Str_dup(e); goto error;} while (0)
         int port;
         my_bool yes = 1;
@@ -348,12 +356,10 @@ const char *MysqlConnection_getLastError(T C) {
 }
 
 static void _mysql_library_deinit(void) {
-#if 0 /* disabled due to mysql stupidity and & my failed try to fix it */
         if (mysql_get_client_version() >= 50003)
                 mysql_library_end();
         else
                 mysql_server_end();
-#endif
 }
 
 static pthread_once_t mysql_finish_once = PTHREAD_ONCE_INIT;
@@ -365,13 +371,16 @@ void mysql_register_deinit(void) {
 /* Class method: MySQL client library finalization */
 void MysqlConnection_onstop(void) {
     pthread_once(&mysql_finish_once, mysql_register_deinit);
+    mysql_thread_end();
 }
 
 /* Class method: try to fulfil mysql client stupid rule */
 void MysqlConnection_onreturn(void) {
-	/* connection might be created not in the thread it is used */
-	_mysql_register_cleanup();
-    //mysql_thread_end(); /* it works with mysql_serer_end(); strange... */
+    /* connection might be created not in the thread it is used */
+    _mysql_register_cleanup();
+    /* this stupid shit works better than all this atexit() &
+       pthread key destructors */
+    //mysql_thread_end();
 }
 
 #ifdef PACKAGE_PROTECTED

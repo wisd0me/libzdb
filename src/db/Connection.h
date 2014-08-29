@@ -135,7 +135,7 @@ void Connection_onstop(void *pool);
  * to call mysql_thread_end()
  * @param pool The parent connection pool
  */
-void Connection_onstop(void *pool);
+void Connection_onreturn(void *pool);
 //>> End Protected methods
 
 /** @name Properties */
